@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>House Price Prediction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & Tokens ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --clay:     #E8DDD0;
+      --parchment:#F4EFE8;
+      --ink:      #1A1208;
+      --bark:     #5C3D1E;
+      --terracotta:#C0582A;
+      --sage:     #4A7C59;
+      --gold:     #C9952A;
+      --mist:     #7B9EA8;
+      --shadow:   rgba(26,18,8,0.12);
+      --radius:   14px;
+      --font-head: 'DM Serif Display', serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--parchment);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Background texture ─────────────────────────── */
+    body::before {
+      content: "";
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(ellipse at 15% 20%, rgba(192,88,42,0.06) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 75%, rgba(74,124,89,0.07) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(201,149,42,0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Layout ─────────────────────────────────────── */
+    .wrapper {
+      position: relative; z-index: 1;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    header {
+      padding: 56px 0 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      border-bottom: 1px solid rgba(92,61,30,0.18);
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--bark);
+      color: var(--clay);
+      font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+      padding: 5px 14px; border-radius: 99px;
+    }
+    .badge::before {
+      content: ""; width: 7px; height: 7px;
+      background: var(--gold); border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: .5; transform: scale(0.7); }
+    }
+
+    h1 {
+      font-family: var(--font-head);
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.1;
+      color: var(--ink);
+    }
+    h1 em {
+      font-style: italic;
+      color: var(--terracotta);
+    }
+
+    .subtitle {
+      max-width: 540px;
+      font-size: 1rem;
+      color: var(--bark);
+      line-height: 1.65;
+      opacity: .85;
+    }
+
+    /* ── Main grid ──────────────────────────────────── */
+    .main-grid {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 28px;
+      align-items: start;
+    }
+    @media (max-width: 740px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Card ───────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border: 1px solid rgba(92,61,30,0.13);
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: 0 2px 20px var(--shadow);
+    }
+
+    .card-title {
+      font-family: var(--font-head);
+      font-size: 1.35rem;
+      margin-bottom: 22px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-title .icon {
+      width: 34px; height: 34px;
+      background: var(--clay);
+      border-radius: 8px;
+      display: grid; place-items: center;
+      font-size: 17px;
+    }
+
+    /* ── Form ───────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px 20px;
+    }
+    @media (max-width: 560px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field.full { grid-column: 1 / -1; }
+
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--bark);
+    }
+    label span {
+      font-weight: 400; text-transform: none; letter-spacing: 0;
+      opacity: .65; font-size: 11px;
+    }
+
+    .input-wrap {
+      position: relative;
+      display: flex; align-items: center;
+    }
+    .input-wrap .unit {
+      position: absolute; right: 12px;
+      font-size: 12px; color: var(--bark); opacity: .6;
+      pointer-events: none;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 36px 10px 13px;
+      border: 1.5px solid rgba(92,61,30,0.22);
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--ink);
+      background: var(--parchment);
+      transition: border-color .18s, box-shadow .18s;
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    input:focus {
+      outline: none;
+      border-color: var(--terracotta);
+      box-shadow: 0 0 0 3px rgba(192,88,42,0.14);
+      background: #fff;
+    }
+    input.error { border-color: #d94040; }
+
+    /* ── Submit button ──────────────────────────────── */
+    .btn-predict {
+      margin-top: 26px;
+      width: 100%;
+      padding: 15px 24px;
+      background: var(--terracotta);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .04em;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: background .2s, transform .12s, box-shadow .2s;
+      box-shadow: 0 4px 16px rgba(192,88,42,0.3);
+    }
+    .btn-predict:hover  { background: #a8481e; box-shadow: 0 6px 20px rgba(192,88,42,0.4); }
+    .btn-predict:active { transform: scale(0.98); }
+    .btn-predict:disabled { background: #b89980; box-shadow: none; cursor: wait; }
+
+    .btn-predict .ripple {
+      position: absolute; border-radius: 50%;
+      transform: scale(0); background: rgba(255,255,255,0.35);
+      animation: ripple .6s linear;
+      pointer-events: none;
+    }
+    @keyframes ripple {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ── Spinner ────────────────────────────────────── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Result card ────────────────────────────────── */
+    .result-card {
+      position: sticky;
+      top: 28px;
+    }
+
+    .price-display {
+      text-align: center;
+      padding: 24px 0 18px;
+      border-bottom: 1px solid var(--clay);
+      margin-bottom: 20px;
+    }
+    .price-label {
+      font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--bark); opacity: .7;
+      margin-bottom: 8px;
+    }
+    .price-main {
+      font-family: var(--font-head);
+      font-size: 2.8rem;
+      line-height: 1;
+      color: var(--sage);
+      transition: all .4s ease;
+    }
+    .price-main.animating {
+      animation: countUp .5s ease-out forwards;
+    }
+    @keyframes countUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .price-sub {
+      font-size: 13px; color: var(--bark); opacity: .7; margin-top: 6px;
+    }
+
+    /* ── Meta chips ─────────────────────────────────── */
+    .meta-list {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .meta-row {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px;
+    }
+    .meta-key { color: var(--bark); opacity: .75; }
+    .meta-val {
+      font-weight: 600; font-size: 13px;
+      background: var(--clay);
+      padding: 2px 10px; border-radius: 6px;
+    }
+
+    /* ── Placeholder state ──────────────────────────── */
+    .placeholder-state {
+      text-align: center;
+      padding: 36px 0;
+    }
+    .placeholder-state .house-icon {
+      font-size: 52px;
+      margin-bottom: 14px;
+      opacity: .35;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-8px); }
+    }
+    .placeholder-state p {
+      font-size: 13px; color: var(--bark); opacity: .65; line-height: 1.6;
+    }
+
+    /* ── Error toast ────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #2a1a0a; color: #f4efe8;
+      padding: 13px 22px; border-radius: 10px;
+      font-size: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      z-index: 999;
+      transition: transform .35s cubic-bezier(.175,.885,.32,1.275);
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Info bar ───────────────────────────────────── */
+    .info-bar {
+      margin-top: 36px;
+      background: rgba(201,149,42,0.1);
+      border: 1px solid rgba(201,149,42,0.3);
+      border-radius: var(--radius);
+      padding: 16px 22px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .info-bar .info-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .info-bar p { font-size: 13px; color: var(--bark); line-height: 1.6; }
+    .info-bar strong { color: var(--ink); }
+
+    /* ── Model comparison strip ─────────────────────── */
+    .model-strip {
+      margin-top: 36px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 560px) {
+      .model-strip { grid-template-columns: 1fr; }
+    }
+
+    .stat-tile {
+      background: #fff;
+      border: 1px solid rgba(92,61,30,0.13);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 12px var(--shadow);
+    }
+    .stat-tile .stat-val {
+      font-family: var(--font-head);
+      font-size: 1.9rem;
+      color: var(--terracotta);
+    }
+    .stat-tile .stat-lbl {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--bark); opacity: .65;
+      margin-top: 4px;
+    }
+
+    footer {
+      margin-top: 64px;
+      border-top: 1px solid rgba(92,61,30,0.15);
+      padding-top: 28px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--bark);
+      opacity: .6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- ── Header ──────────────────────────────────────── -->
+  <header>
+    <span class="badge">ML Project · California Housing</span>
+    <h1>House Price<br><em>Prediction</em> System</h1>
+    <p class="subtitle">
+      Enter the property details below and our trained Machine Learning model
+      will estimate the median house value for that area of California.
+    </p>
+  </header>
+
+  <!-- ── Stats strip ─────────────────────────────────── -->
+  <div class="model-strip">
+    <div class="stat-tile">
+      <div class="stat-val">20,640</div>
+      <div class="stat-lbl">Training samples</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val">8</div>
+      <div class="stat-lbl">Input features</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-val">2</div>
+      <div class="stat-lbl">Models trained</div>
+    </div>
+  </div>
+
+  <!-- ── Main grid ───────────────────────────────────── -->
+  <div class="main-grid">
+
+    <!-- LEFT: Input form -->
+    <div class="card">
+      <div class="card-title">
+        <span class="icon">📋</span>
+        Property Details
+      </div>
+
+      <form id="predict-form" novalidate>
+        <div class="form-grid">
+
+          <div class="field">
+            <label for="MedInc">Median Income <span>(×$10k)</span></label>
+            <div class="input-wrap">
+              <input type="number" id="MedInc" name="MedInc"
+                     placeholder="e.g. 3.87" step="0.01" min="0" value="3.87" required />
+              <span class="unit">$10k</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="HouseAge">House Age <span>(years)</span></label>
+            <div class="input-wrap">
+              <input type="number" id="HouseAge" name="HouseAge"
+                     placeholder="e.g. 29" step="1" min="0" max="100" value="29" required />
+              <span class="unit">yrs</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="AveRooms">Average Rooms</label>
+            <div class="input-wrap">
+              <input type="number" id="AveRooms" name="AveRooms"
+                     placeholder="e.g. 5.43" step="0.01" min="0" value="5.43" required />
+              <span class="unit">rm</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="AveBedrms">Average Bedrooms</label>
+            <div class="input-wrap">
+              <input type="number" id="AveBedrms" name="AveBedrms"
+                     placeholder="e.g. 1.09" step="0.01" min="0" value="1.09" required />
+              <span class="unit">bd</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="Population">Population</label>
+            <div class="input-wrap">
+              <input type="number" id="Population" name="Population"
+                     placeholder="e.g. 1015" step="1" min="0" value="1015" required />
+              <span class="unit">ppl</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="AveOccup">Avg Occupants</label>
+            <div class="input-wrap">
+              <input type="number" id="AveOccup" name="AveOccup"
+                     placeholder="e.g. 2.72" step="0.01" min="0" value="2.72" required />
+              <span class="unit">ppl</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="Latitude">Latitude</label>
+            <div class="input-wrap">
+              <input type="number" id="Latitude" name="Latitude"
+                     placeholder="e.g. 34.05" step="0.001" value="34.05" required />
+              <span class="unit">°N</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="Longitude">Longitude</label>
+            <div class="input-wrap">
+              <input type="number" id="Longitude" name="Longitude"
+                     placeholder="e.g. -118.24" step="0.001" value="-118.24" required />
+              <span class="unit">°W</span>
+            </div>
+          </div>
+
+        </div><!-- /form-grid -->
+
+        <button type="submit" class="btn-predict" id="submit-btn">
+          Predict Price
+        </button>
+      </form>
+
+      <div class="info-bar">
+        <span class="info-icon">💡</span>
+        <p>
+          <strong>Tip:</strong> Values reflect census block group averages.
+          The model was trained on the
+          <strong>California Housing dataset</strong> from scikit-learn.
+          Prices are in <strong>$100k units</strong> — so 3.5 = $350,000.
+        </p>
+      </div>
+    </div>
+
+    <!-- RIGHT: Result panel -->
+    <div class="card result-card" id="result-panel">
+
+      <div class="card-title">
+        <span class="icon">🏷️</span>
+        Estimated Value
+      </div>
+
+      <!-- Placeholder (shown before first prediction) -->
+      <div class="placeholder-state" id="placeholder">
+        <div class="house-icon">🏡</div>
+        <p>Fill in the property details<br>and click <strong>Predict Price</strong><br>to see the estimate here.</p>
+      </div>
+
+      <!-- Result (hidden initially) -->
+      <div id="result-content" style="display:none;">
+        <div class="price-display">
+          <div class="price-label">Predicted Median Value</div>
+          <div class="price-main" id="price-main">–</div>
+          <div class="price-sub" id="price-sub">–</div>
+        </div>
+
+        <div class="meta-list">
+          <div class="meta-row">
+            <span class="meta-key">Model</span>
+            <span class="meta-val" id="meta-model">–</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">Raw value ($100k)</span>
+            <span class="meta-val" id="meta-raw">–</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">Median income used</span>
+            <span class="meta-val" id="meta-inc">–</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-key">Location</span>
+            <span class="meta-val" id="meta-loc">–</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /main-grid -->
+
+  <footer>
+    Built with Python · scikit-learn · FastAPI · vanilla HTML/CSS/JS &nbsp;·&nbsp;
+    California Housing Dataset
+  </footer>
+</div>
+
+<!-- Error toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ── Config ─────────────────────────────────────────── */
+  const API_BASE = "http://localhost:8000";
+
+  /* ── DOM refs ───────────────────────────────────────── */
+  const form        = document.getElementById("predict-form");
+  const submitBtn   = document.getElementById("submit-btn");
+  const placeholder = document.getElementById("placeholder");
+  const resultContent = document.getElementById("result-content");
+  const toast       = document.getElementById("toast");
+
+  /* ── Toast helper ───────────────────────────────────── */
+  let toastTimer;
+  function showToast(msg, duration = 4000) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), duration);
+  }
+
+  /* ── Ripple effect on button ────────────────────────── */
+  submitBtn.addEventListener("click", function (e) {
+    const rect   = this.getBoundingClientRect();
+    const ripple = document.createElement("span");
+    const size   = Math.max(rect.width, rect.height);
+    ripple.classList.add("ripple");
+    ripple.style.cssText =
+      `width:${size}px;height:${size}px;` +
+      `left:${e.clientX - rect.left - size/2}px;` +
+      `top:${e.clientY - rect.top  - size/2}px;`;
+    this.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 700);
+  });
+
+  /* ── Number formatter ───────────────────────────────── */
+  function fmtUSD(amount) {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency", currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  /* ── Animated counter ───────────────────────────────── */
+  function animateValue(element, endVal, prefix = "$", suffix = "") {
+    const duration = 600;
+    const startTime = performance.now();
+    const start = 0;
+
+    function tick(now) {
+      const elapsed  = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease     = 1 - Math.pow(1 - progress, 3);  // cubic ease-out
+      const current  = start + (endVal - start) * ease;
+
+      element.textContent = prefix + current.toLocaleString("en-US", {
+        maximumFractionDigits: 0
+      }) + suffix;
+
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ── Form submission ────────────────────────────────── */
+  form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    /* Collect & validate fields */
+    const fields  = ["MedInc","HouseAge","AveRooms","AveBedrms",
+                     "Population","AveOccup","Latitude","Longitude"];
+    const payload = {};
+    let hasError  = false;
+
+    fields.forEach(key => {
+      const el  = document.getElementById(key);
+      const val = parseFloat(el.value);
+      el.classList.remove("error");
+
+      if (isNaN(val)) {
+        el.classList.add("error");
+        hasError = true;
+      } else {
+        payload[key] = val;
+      }
+    });
+
+    if (hasError) {
+      showToast("⚠️ Please fill in all fields with valid numbers.");
+      return;
+    }
+
+    /* Loading state */
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span>Predicting…';
+
+    try {
+      const response = await fetch(`${API_BASE}/predict`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.detail || `Server error ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      /* Reveal result panel */
+      placeholder.style.display    = "none";
+      resultContent.style.display  = "block";
+
+      /* Animate the big price number */
+      const usd       = data.predicted_price_usd;
+      const priceMain = document.getElementById("price-main");
+      priceMain.classList.remove("animating");
+      void priceMain.offsetWidth;  // reflow to restart animation
+      priceMain.classList.add("animating");
+      animateValue(priceMain, usd, "$");
+
+      document.getElementById("price-sub").textContent =
+        `≈ ${data.predicted_price_100k.toFixed(3)} × $100,000`;
+
+      /* Meta details */
+      document.getElementById("meta-model").textContent =
+        data.model_used.replace("Regressor", "").trim();
+
+      document.getElementById("meta-raw").textContent =
+        data.predicted_price_100k.toFixed(4);
+
+      document.getElementById("meta-inc").textContent =
+        `$${(payload.MedInc * 10000).toLocaleString("en-US")}`;
+
+      document.getElementById("meta-loc").textContent =
+        `${payload.Latitude.toFixed(2)}°N, ${Math.abs(payload.Longitude).toFixed(2)}°W`;
+
+    } catch (err) {
+      if (err.message.includes("Failed to fetch")) {
+        showToast("❌ Cannot reach the API. Is the FastAPI server running on port 8000?", 6000);
+      } else {
+        showToast(`❌ ${err.message}`, 5000);
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Predict Price";
+    }
+  });
+</script>
+</body>
+</html>
